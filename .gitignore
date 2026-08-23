@@ -1,0 +1,23 @@
+# Python virtual environment
+.venv/
+venv/
+ENV/
+
+# Python compiled bytecode & caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Generated dataset CSVs and heavy outputs
+data/*.csv
+data/
+
+# Model binaries & checkpoints
+models/**/*.joblib
+models/*.joblib
+
+# OS & Editor files
+.DS_Store
+.vscode/
+.idea/
