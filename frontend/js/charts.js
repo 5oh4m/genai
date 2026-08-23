@@ -23,6 +23,7 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
 }
 
 function cssVar(name) {
+  // Read from :root so canvas picks up :root.light-mode token overrides
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
@@ -174,7 +175,7 @@ export const Charts = {
 
     const accent  = cssVar('--accent');
     const textMut = cssVar('--text-muted');
-    const bg0     = cssVar('--bg-0');
+    const bg1     = cssVar('--bg-1');
 
     const pad = 32;
     const pW  = W - pad * 2;
@@ -231,7 +232,7 @@ export const Charts = {
 
     // Dots + labels
     points.forEach(p => {
-      ctx.fillStyle = bg0;
+      ctx.fillStyle = bg1;
       ctx.beginPath();
       ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
       ctx.fill();

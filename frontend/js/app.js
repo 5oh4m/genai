@@ -47,14 +47,14 @@ function setupThemeToggle() {
   // Restore saved theme
   const saved = localStorage.getItem('aegis-theme');
   if (saved === 'light') {
-    document.body.classList.add('light-mode');
+    document.documentElement.classList.add('light-mode');
     state.darkMode = false;
     btn.textContent = '☀️';
   }
 
   btn.addEventListener('click', () => {
     state.darkMode = !state.darkMode;
-    document.body.classList.toggle('light-mode', !state.darkMode);
+    document.documentElement.classList.toggle('light-mode', !state.darkMode);
     btn.textContent = state.darkMode ? '🌙' : '☀️';
     localStorage.setItem('aegis-theme', state.darkMode ? 'dark' : 'light');
 
