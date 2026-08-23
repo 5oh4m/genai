@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AEGIS-AI — Adversarial Cyber Defense Simulation</title>
+  <meta name="description" content="Real-time adversarial AI fraud detection simulation platform — Red vs Blue Team command center.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+  <div class="app-shell">
+
+    <!-- ================================================================
+         TOP NAV
+         ================================================================ -->
+    <header class="top-nav">
+
+      <!-- Brand -->
+      <div class="brand">
+        <div class="brand-hex"></div>
+        <span class="brand-name">AEGIS-AI</span>
+        <span class="brand-sub">SIMULATION ENGINE</span>
+      </div>
+
+      <!-- Workspace Switcher -->
+      <nav class="nav-tabs">
+        <button class="nav-tab active" data-tab="stream">
+          <span>⚡</span> Stream
+        </button>
+        <button class="nav-tab" data-tab="red-team">
+          <span>🎯</span> Red Team
+        </button>
+        <button class="nav-tab" data-tab="retrain">
+          <span>🛡</span> Blue Team
+        </button>
+        <button class="nav-tab" data-tab="threats">
+          <span>🔬</span> Threats
+        </button>
+        <button class="nav-tab" data-tab="sandbox">
+          <span>🧪</span> Sandbox
+        </button>
+      </nav>
+
+      <!-- Right HUD + Theme Toggle -->
+      <div class="nav-right">
+        <div class="live-badge">
+          <div class="live-dot"></div>
+          LIVE
+        </div>
+
+        <div class="hud-stat">
+          <span class="hud-stat-label">Transactions</span>
+          <span id="hud-total-txns" class="hud-stat-val accent">—</span>
+        </div>
+
+        <div class="hud-stat">
+          <span class="hud-stat-label">Detected</span>
+          <span id="hud-fraud-detected" class="hud-stat-val danger">—</span>
+        </div>
+
+        <div class="hud-stat">
+          <span class="hud-stat-label">ROC-AUC</span>
+          <span id="hud-roc-auc" class="hud-stat-val success">—</span>
+        </div>
+
+        <div class="hud-stat">
+          <span class="hud-stat-label">Cycle</span>
+          <span id="hud-active-cycle" class="hud-stat-val warn">#1</span>
+        </div>
+
+        <button class="theme-toggle" id="theme-toggle-btn" title="Toggle Light/Dark">
+          🌙
+        </button>
+      </div>
+    </header>
+
+    <!-- ================================================================
+         MAIN VIEWPORT
+         ================================================================ -->
+    <main class="main-viewport">
+
+      <!-- ==============================================================
+           WORKSPACE 1: TACTICAL STREAM & LIVE TRIAGE
+           ============================================================== -->
+      <section id="workspace-stream" class="workspace-panel active">
+        <div class="stream-layout">
+
+          <!-- Main data table -->
+          <div class="stream-main">
+            <div class="card" style="height:100%;">
+              <!-- Filter bar -->
+              <div class="filter-bar">
+                <div class="filter-pills">
+                  <button class="pill active" data-filter="all">All</button>
+                  <button class="pill" data-filter="high">High Risk</button>
+                  <button class="pill" data-filter="medium">Medium</button>
+                  <button class="pill" data-filter="low">Approved</button>
+                  <button class="pill" data-filter="rules">Rules Fired</button>
+                  <button class="pill danger-pill" data-filter="evaded">⚠ Evaded</button>
+                </div>
+                <div class="search-wrap">
+                  <span class="search-icon">⌕</span>
+                  <input type="text" id="search-input" placeholder="Search ID, user, channel…">
+                </div>
+              </div>
+
+              <!-- Table -->
+              <div class="table-scroll">
+                <table class="tactical-table">
+                  <thead>
+                    <tr>
+                      <th>Txn ID</th>
+                      <th>Time</th>
+                      <th>Channel</th>
+                      <th>Routing</th>
+                      <th style="text-align:right;">Amount</th>
+                      <th>Risk Tier</th>
+                      <th>Fraud %</th>
+                      <th>Rules</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tactical-table-body">
+                    <tr>
+                      <td colspan="8" style="text-align:center; padding:40px; color:var(--text-muted);">
+                        Loading simulation data…
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Side KPIs + charts -->
+          <div class="stream-side">
+
+            <!-- Defense Metrics -->
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title"><span class="card-title-icon">📊</span> Defense Metrics</span>
+              </div>
+              <div class="card-body-sm">
+                <div class="metric-grid">
+                  <div class="metric-box">
+                    <div id="side-kpi-total" class="metric-val accent">—</div>
+                    <div class="metric-label">Total Scored</div>
+                  </div>
+                  <div class="metric-box">
+                    <div id="side-kpi-high-risk" class="metric-val danger">—</div>
+                    <div class="metric-label">High Risk</div>
+                  </div>
+                  <div class="metric-box">
+                    <div id="side-kpi-rules-fired" class="metric-val warn">—</div>
+                    <div class="metric-label">Rules Fired</div>
+                  </div>
+                  <div class="metric-box">
+                    <div id="side-kpi-evaded" class="metric-val danger">—</div>
+                    <div class="metric-label">Evasion Rate</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Confusion Matrix -->
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title"><span class="card-title-icon">🎯</span> Confusion Matrix</span>
+              </div>
+              <div class="card-body-sm">
+                <canvas id="chart-confusion-matrix" width="300" height="140"></canvas>
+              </div>
+            </div>
+
+            <!-- Threat Breakdown -->
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title"><span class="card-title-icon">📈</span> Threat Detection</span>
+              </div>
+              <div class="card-body-sm">
+                <canvas id="chart-threat-breakdown" width="300" height="120"></canvas>
+              </div>
+            </div>
+
+          </div><!-- /stream-side -->
+        </div><!-- /stream-layout -->
+      </section>
+
+      <!-- ==============================================================
+           WORKSPACE 2: RED TEAM ADVERSARIAL ARENA
+           ============================================================== -->
+      <section id="workspace-red-team" class="workspace-panel">
+        <div class="arena-layout">
+
+          <!-- Controls -->
+          <div class="arena-controls">
+            <div class="card card-accent-danger">
+              <div class="card-header">
+                <span class="card-title" style="color:var(--danger);">
+                  <span class="card-title-icon">🎯</span> Attack Generator
+                </span>
+              </div>
+              <div class="card-body">
+
+                <div class="ctrl-group">
+                  <div class="ctrl-label-row">
+                    <span class="ctrl-label">Stealth Level</span>
+                    <span id="val-stealth" class="ctrl-val" style="color:var(--danger);">0.35</span>
+                  </div>
+                  <input type="range" id="slider-stealth" class="sim-slider" min="0.0" max="1.0" step="0.05" value="0.35">
+                  <div class="preset-row">
+                    <button class="preset-chip" data-stealth="0.0">Naive</button>
+                    <button class="preset-chip" data-stealth="0.35">Moderate</button>
+                    <button class="preset-chip" data-stealth="0.75">Evasive</button>
+                    <button class="preset-chip" data-stealth="1.0">Ultra-Stealth</button>
+                  </div>
+                </div>
+
+                <div class="ctrl-group">
+                  <div class="ctrl-label-row">
+                    <span class="ctrl-label">Transaction Volume</span>
+                    <span id="val-count" class="ctrl-val">1,000</span>
+                  </div>
+                  <input type="range" id="slider-count" class="sim-slider" min="100" max="10000" step="100" value="1000">
+                </div>
+
+                <div class="ctrl-group">
+                  <div class="ctrl-label-row">
+                    <span class="ctrl-label">Fraud Ratio</span>
+                    <span id="val-ratio" class="ctrl-val">8%</span>
+                  </div>
+                  <input type="range" id="slider-ratio" class="sim-slider" min="0.01" max="0.30" step="0.01" value="0.08">
+                </div>
+
+                <button id="btn-generate-batch" class="action-btn btn-danger" style="margin-top:8px;">
+                  ⚡ Synthesize Attack Stream
+                </button>
+
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Evasion intel + realism -->
+          <div class="arena-right">
+            <!-- Evasion intel -->
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title"><span class="card-title-icon">📡</span> Closed-Loop Evasion Intel</span>
+              </div>
+              <div class="card-body">
+                <div class="metric-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 16px;">
+                  <div class="metric-box">
+                    <div id="evasion-rec-stealth" class="metric-val danger">75%</div>
+                    <div class="metric-label">Rec. Stealth</div>
+                  </div>
+                  <div class="metric-box" style="grid-column:span 2;">
+                    <div id="evasion-rec-strategy" class="metric-val warn" style="font-size:13px;">ESCALATE TIMING</div>
+                    <div class="metric-label">Adaptation Strategy</div>
+                  </div>
+                </div>
+                <div id="evasion-rec-reasoning"
+                  style="font-family:var(--font-mono); font-size:11px; color:var(--text-secondary);
+                         line-height:1.7; background:var(--bg-2); padding:12px 14px;
+                         border-radius:var(--radius-sm); border:1px solid var(--border-0);">
+                  Analyzing model weaknesses…
+                </div>
+              </div>
+            </div>
+
+            <!-- Zero-leakage guarantee -->
+            <div class="card card-accent-success">
+              <div class="card-header">
+                <span class="card-title"><span class="card-title-icon">🔒</span> Realism & Leakage Guarantees</span>
+              </div>
+              <div class="card-body">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                  <div style="background:var(--success-glow); border:1px solid rgba(72,187,120,0.3);
+                              border-radius:var(--radius-sm); padding:14px;">
+                    <div style="color:var(--success); font-weight:700; font-size:11px; font-family:var(--font-mono); margin-bottom:4px;">
+                      ✓ ZERO LEAKAGE
+                    </div>
+                    <div style="font-size:11px; color:var(--text-secondary);">
+                      No oracle columns exposed to scoring pipeline.
+                    </div>
+                  </div>
+                  <div style="background:var(--accent-subtle); border:1px solid var(--border-accent);
+                              border-radius:var(--radius-sm); padding:14px;">
+                    <div style="color:var(--accent); font-weight:700; font-size:11px; font-family:var(--font-mono); margin-bottom:4px;">
+                      ✓ LOG-NORMAL FIT
+                    </div>
+                    <div style="font-size:11px; color:var(--text-secondary);">
+                      Amount skewness matches genuine human spending.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ==============================================================
+           WORKSPACE 3: BLUE TEAM RETRAINING STUDIO
+           ============================================================== -->
+      <section id="workspace-retrain" class="workspace-panel">
+        <div class="retrain-layout">
+
+          <!-- Left: chart + timeline -->
+          <div class="retrain-left">
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title"><span class="card-title-icon">📉</span> ROC-AUC Training Trajectory</span>
+              </div>
+              <div class="card-body-sm">
+                <canvas id="chart-retrain-trajectory" width="600" height="180"></canvas>
+              </div>
+            </div>
+
+            <div class="card" style="flex:1; min-height:0;">
+              <div class="card-header">
+                <span class="card-title"><span class="card-title-icon">📜</span> Defense Cycle Log</span>
+              </div>
+              <div class="card-body-sm" style="overflow-y:auto; max-height:calc(100% - 50px);">
+                <div id="cycle-history-list" class="cycle-list">
+                  <!-- injected -->
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: retrain action -->
+          <div class="retrain-right">
+            <div class="card card-accent-success" style="flex:1;">
+              <div class="card-header">
+                <span class="card-title" style="color:var(--accent);">
+                  <span class="card-title-icon">⚡</span> Retraining Engine
+                </span>
+              </div>
+              <div class="card-body" style="display:flex; flex-direction:column; gap:16px;">
+                <p style="font-size:12px; color:var(--text-secondary); line-height:1.7;">
+                  The active retrainer ingests adversarial evasions that penetrated previous defense
+                  thresholds, retrains the hybrid ensemble, and recalculates feature importance.
+                </p>
+                <div style="background:var(--bg-2); border-radius:var(--radius-sm); padding:14px 16px;">
+                  <div style="font-size:10px; font-family:var(--font-mono); color:var(--text-muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.7px;">
+                    Latest Metrics
+                  </div>
+                  <div style="display:flex; gap:20px; font-family:var(--font-mono);">
+                    <div class="cycle-metric">
+                      <div class="val text-accent" id="retrain-roc">—</div>
+                      <div class="lbl">ROC-AUC</div>
+                    </div>
+                    <div class="cycle-metric">
+                      <div class="val text-success" id="retrain-recall">—</div>
+                      <div class="lbl">Recall</div>
+                    </div>
+                    <div class="cycle-metric">
+                      <div class="val text-warn" id="retrain-precision">—</div>
+                      <div class="lbl">Precision</div>
+                    </div>
+                    <div class="cycle-metric">
+                      <div class="val text-purple" id="retrain-f1">—</div>
+                      <div class="lbl">F1</div>
+                    </div>
+                  </div>
+                </div>
+                <button id="btn-trigger-retrain" class="action-btn btn-accent" style="margin-top:auto;">
+                  🛡 Execute Adversarial Retraining Cycle
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ==============================================================
+           WORKSPACE 4: THREAT VECTOR DISSECTION LAB
+           ============================================================== -->
+      <section id="workspace-threats" class="workspace-panel" style="overflow-y:auto;">
+        <div class="threat-grid">
+
+          <!-- Threat 1: Voice Clone -->
+          <div class="threat-card">
+            <div class="threat-card-header">
+              <span class="threat-type-tag"
+                    style="background:var(--danger-subtle); border:1px solid var(--danger); color:var(--danger);">
+                THREAT 01 · GENAI AUDIO
+              </span>
+              <h3>Voice-Clone APP Scams</h3>
+              <p class="threat-desc">
+                Generative voice clones of family members in simulated distress trigger urgent push payments
+                to freshly generated mule accounts, bypassing emotional authentication.
+              </p>
+            </div>
+            <div class="threat-card-body">
+              <div class="evasion-label">Evasion Mechanics</div>
+              <div class="evasion-list">
+                <div class="evasion-item">
+                  <div class="evasion-dot" style="background:var(--danger);"></div>
+                  Delay padding: 10–30 min call-to-transfer dwell
+                </div>
+                <div class="evasion-item">
+                  <div class="evasion-dot" style="background:var(--danger);"></div>
+                  Historical mean amount mimicry (~₹ 487)
+                </div>
+                <div class="evasion-item">
+                  <div class="evasion-dot" style="background:var(--danger);"></div>
+                  Diurnal curve matching (active hour targeting)
+                </div>
+                <div class="evasion-item">
+                  <div class="evasion-dot" style="background:var(--danger);"></div>
+                  Call hangup before app launch telemetry
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Threat 2: Ephemeral Boutique -->
+          <div class="threat-card">
+            <div class="threat-card-header">
+              <span class="threat-type-tag"
+                    style="background:var(--warn-glow); border:1px solid var(--warn); color:var(--warn);">
+                THREAT 02 · SYNTHETIC COMMERCE
+              </span>
+              <h3>AI Ephemeral Boutiques</h3>
+              <p class="threat-desc">
+                Synthetic e-commerce storefronts execute flash multi-victim bust-outs before
+                merchant account flagging, leveraging LLM-generated product catalogs.
+              </p>
+            </div>
+            <div class="threat-card-body">
+              <div class="evasion-label">Evasion Mechanics</div>
+              <div class="evasion-list">
+                <div class="evasion-item">
+                  <div class="evasion-dot" style="background:var(--warn);"></div>
+                  Pre-aged dormant merchant profiles (&gt;30 days)
+                </div>
+                <div class="evasion-item">
+                  <div class="evasion-dot" style="background:var(--warn);"></div>
+                  Poisson arrival pacing over 5–8 days
+                </div>
+                <div class="evasion-item">
+                  <div class="evasion-dot" style="background:var(--warn);"></div>
+                  Varied retail basket pricing per victim
+                </div>
+                <div class="evasion-item">
+                  <div class="evasion-dot" style="background:var(--warn);"></div>
+                  Multi-channel routing (Cards + UPI + P2P)
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Threat 3: Digital Arrest -->
+          <div class="threat-card">
+            <div class="threat-card-header">
+              <span class="threat-type-tag"
+                    style="background:var(--purple-glow); border:1px solid var(--purple); color:var(--purple);">
+                THREAT 03 · DEEPFAKE COERCION
+              </span>
+              <h3>Deepfake Digital Arrest</h3>
+              <p class="threat-desc">
+                Deepfake law enforcement keeps victims in prolonged hostage sessions,
+                draining accounts via micro-tranches that stay below velocity thresholds.
+              </p>
+            </div>
+            <div class="threat-card-body">
+              <div class="evasion-label">Evasion Mechanics</div>
+              <div class="evasion-list">
+                <div class="evasion-item">
+                  <div class="evasion-dot" style="background:var(--purple);"></div>
+                  Micro-tranche fanouts (2–4 transfers split)
+                </div>
+                <div class="evasion-item">
+                  <div class="evasion-dot" style="background:var(--purple);"></div>
+                  Transfers spaced under velocity window limit
+                </div>
+                <div class="evasion-item">
+                  <div class="evasion-dot" style="background:var(--purple);"></div>
+                  App restart session dwell masking
+                </div>
+                <div class="evasion-item">
+                  <div class="evasion-dot" style="background:var(--purple);"></div>
+                  VoIP call hangup telemetry obfuscation
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ==============================================================
+           WORKSPACE 5: WHAT-IF SANDBOX
+           ============================================================== -->
+      <section id="workspace-sandbox" class="workspace-panel">
+        <div class="sandbox-layout">
+
+          <!-- Controls -->
+          <div class="sandbox-controls">
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title"><span class="card-title-icon">🧪</span> Transaction Workbench</span>
+              </div>
+              <div class="card-body">
+
+                <div class="ctrl-group">
+                  <div class="ctrl-label-row">
+                    <span class="ctrl-label">Amount ($)</span>
+                    <span id="val-sb-amount" class="ctrl-val">$485.50</span>
+                  </div>
+                  <input type="range" id="sb-amount" class="sim-slider" min="10" max="10000" step="5" value="485.50">
+                </div>
+
+                <div class="ctrl-group">
+                  <div class="ctrl-label-row">
+                    <span class="ctrl-label">Session Dwell (sec)</span>
+                    <span id="val-sb-session-dwell" class="ctrl-val">95</span>
+                  </div>
+                  <input type="range" id="sb-session-dwell" class="sim-slider" min="10" max="3600" step="10" value="95">
+                </div>
+
+                <div class="ctrl-group">
+                  <div class="ctrl-label-row">
+                    <span class="ctrl-label">Time Since Payee Added (sec)</span>
+                    <span id="val-sb-time-since-payee" class="ctrl-val">35</span>
+                  </div>
+                  <input type="range" id="sb-time-since-payee" class="sim-slider" min="5" max="1800" step="5" value="35">
+                </div>
+
+                <div class="ctrl-group">
+                  <div class="ctrl-label-row">
+                    <span class="ctrl-label">Amount Deviation (Z-Score)</span>
+                    <span id="val-sb-amount-dev" class="ctrl-val">2.8 σ</span>
+                  </div>
+                  <input type="range" id="sb-amount-dev" class="sim-slider" min="-2.0" max="5.0" step="0.1" value="2.8">
+                </div>
+
+                <div class="ctrl-group">
+                  <div class="ctrl-label-row">
+                    <span class="ctrl-label">Receiver Account Age (days)</span>
+                    <span id="val-sb-receiver-age" class="ctrl-val">2</span>
+                  </div>
+                  <input type="range" id="sb-receiver-age" class="sim-slider" min="0" max="365" step="1" value="2">
+                </div>
+
+                <!-- Hidden velocity input -->
+                <input type="hidden" id="sb-velocity-1h" value="2">
+
+                <div class="check-grid">
+                  <label class="check-label">
+                    <input type="checkbox" id="sb-concurrent-call" checked>
+                    Concurrent Call
+                  </label>
+                  <label class="check-label">
+                    <input type="checkbox" id="sb-new-payee" checked>
+                    New Payee Flag
+                  </label>
+                </div>
+
+                <div class="select-grid">
+                  <div class="select-wrap">
+                    <label>Channel</label>
+                    <select id="sb-channel" class="sim-select">
+                      <option value="UPI">UPI</option>
+                      <option value="Card">Card</option>
+                      <option value="Wire">Wire</option>
+                      <option value="P2P">P2P</option>
+                    </select>
+                  </div>
+                  <div class="select-wrap">
+                    <label>Device</label>
+                    <select id="sb-device-type" class="sim-select">
+                      <option value="Android">Android</option>
+                      <option value="iOS">iOS</option>
+                      <option value="Web">Web</option>
+                    </select>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: reactive gauge + tripwires -->
+          <div class="sandbox-result">
+            <div class="gauge-wrap">
+              <canvas id="chart-sandbox-gauge" width="200" height="200"></canvas>
+              <div class="gauge-val" id="sb-prob-val">0.0%</div>
+            </div>
+
+            <div id="sb-tier-badge" class="badge-tier high" style="font-size:12px; padding:5px 20px;">
+              TIER: HIGH
+            </div>
+
+            <div id="sb-critical-override"
+                 style="font-family:var(--font-mono); font-size:11px; color:var(--text-muted); font-weight:600;">
+              —
+            </div>
+
+            <div class="sandbox-scores">
+              <div class="score-item">
+                <div class="score-lbl">ML Score (70%)</div>
+                <div class="score-val accent" id="sb-ml-prob">—</div>
+              </div>
+              <div class="score-item">
+                <div class="score-lbl">Rule Score (30%)</div>
+                <div class="score-val warn" id="sb-rule-score">—</div>
+              </div>
+            </div>
+
+            <div id="sb-tripwires-list" class="tripwire-list">
+              <!-- injected -->
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </main><!-- /main-viewport -->
+
+    <!-- ================================================================
+         TRANSACTION INSPECTOR MODAL DRAWER
+         ================================================================ -->
+    <div id="inspector-modal" class="modal-overlay">
+      <div class="inspector-drawer">
+
+        <div class="drawer-header">
+          <div>
+            <div class="drawer-eyebrow">Transaction Inspector</div>
+            <div id="drawer-txn-id" class="drawer-title">TXN_0000000</div>
+          </div>
+          <button id="close-inspector-btn" class="close-btn">✕</button>
+        </div>
+
+        <div class="drawer-body">
+
+          <!-- DNA -->
+          <div class="drawer-section-label">Telemetry DNA</div>
+          <div class="dna-grid">
+            <div class="dna-item"><div class="dna-label">Amount</div><div id="dna-amount" class="dna-val">—</div></div>
+            <div class="dna-item"><div class="dna-label">Channel</div><div id="dna-channel" class="dna-val">—</div></div>
+            <div class="dna-item"><div class="dna-label">Sender Age</div><div id="dna-sender-age" class="dna-val">—</div></div>
+            <div class="dna-item"><div class="dna-label">Receiver Age</div><div id="dna-receiver-age" class="dna-val">—</div></div>
+            <div class="dna-item"><div class="dna-label">Session Dwell</div><div id="dna-session-dwell" class="dna-val">—</div></div>
+            <div class="dna-item"><div class="dna-label">Payee Added</div><div id="dna-time-since-payee" class="dna-val">—</div></div>
+            <div class="dna-item"><div class="dna-label">Concurrent Call</div><div id="dna-concurrent-call" class="dna-val">—</div></div>
+            <div class="dna-item"><div class="dna-label">Amount Z-Score</div><div id="dna-amount-dev" class="dna-val">—</div></div>
+            <div class="dna-item"><div class="dna-label">Velocity 1h</div><div id="dna-velocity-1h" class="dna-val">—</div></div>
+          </div>
+
+          <!-- Ensemble scoring -->
+          <div class="drawer-section-label">Defense Ensemble</div>
+          <div class="score-block">
+            <div class="score-row">
+              <span class="label">Final Fraud Probability</span>
+              <span id="drawer-final-prob" class="value main">—</span>
+            </div>
+            <div class="divider" style="margin:10px 0;"></div>
+            <div class="score-row">
+              <span class="label">ML Tabular (70%)</span>
+              <span id="drawer-ml-prob" class="value">—</span>
+            </div>
+            <div class="score-row">
+              <span class="label">Rule Engine (30%)</span>
+              <span id="drawer-rule-score" class="value">—</span>
+            </div>
+          </div>
+
+          <!-- Rules fired -->
+          <div class="drawer-section-label">Heuristic Tripwires</div>
+          <div id="drawer-rules-list" style="margin-bottom:20px;"></div>
+
+          <!-- Oracle reveal -->
+          <div class="oracle-box">
+            <div class="oracle-header">🔴 Oracle Answer Key (Red Team)</div>
+            <div class="oracle-grid">
+              <div class="oracle-item">
+                <div class="oracle-lbl">Actual Status</div>
+                <div id="oracle-actual-label" class="oracle-val">—</div>
+              </div>
+              <div class="oracle-item">
+                <div class="oracle-lbl">Attack Subtype</div>
+                <div id="oracle-attack-subtype" class="oracle-val">—</div>
+              </div>
+              <div class="oracle-item">
+                <div class="oracle-lbl">Stealth Level</div>
+                <div id="oracle-stealth" class="oracle-val">—</div>
+              </div>
+              <div class="oracle-item">
+                <div class="oracle-lbl">Evasion Technique</div>
+                <div id="oracle-evasion-tech" class="oracle-val">—</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /app-shell -->
+
+  <script type="module" src="/static/js/app.js"></script>
+</body>
+</html>
