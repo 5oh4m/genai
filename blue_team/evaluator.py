@@ -1,102 +1,100 @@
 """
-Blue Team Performance & Defense Evaluation Metrics.
+Blue Team evaluator — computes defense performance metrics.
+Adapted from the old evaluator.py to work with attack attempts instead of tabular predictions.
 """
 
-from typing import Dict, Any, Optional
-import pandas as pd
-import numpy as np
-from sklearn.metrics import (
-    precision_score,
-    recall_score,
-    f1_score,
-    roc_auc_score,
-    average_precision_score,
-    confusion_matrix,
-)
-
-from red_team.config import (
-    LABEL_NORMAL,
-    LABEL_VOICE_CLONE,
-    LABEL_EPHEMERAL_MERCHANT,
-    LABEL_DIGITAL_ARREST,
-    ATTACK_NAMES,
-)
+from typing import Any
+from collections import Counter
 
 
 class BlueTeamEvaluator:
-    """Evaluates Blue Team model predictions against oracle ground truth."""
+    """Computes defense metrics from attack attempt records."""
 
-    def __init__(self, threshold: float = 0.50):
-        self.threshold = threshold
-
-    def evaluate(
-        self,
-        df_predictions: pd.DataFrame,
-        df_answer_key: pd.DataFrame,
-    ) -> Dict[str, Any]:
+    @staticmethod
+    def evaluate(attempts: list[dict]) -> dict[str, Any]:
         """
-        Calculates defense performance metrics and threat-level breakdowns.
+        Compute defense performance metrics from a list of attempt dicts.
+
+        Args:
+            attempts: List of AttackAttempt.to_dict() results.
+
+        Returns:
+            Metrics dict with overall and per-category breakdowns.
         """
-        merged = pd.merge(df_predictions, df_answer_key, on="transaction_id", how="inner")
-        if merged.empty:
-            raise ValueError("No matching transaction IDs between predictions and answer key!")
+        if not attempts:
+            return {
+                "total_attempts": 0,
+                "success_rate": 0.0,
+                "block_rate": 0.0,
+                "escalation_rate": 0.0,
+            }
 
-        y_true = (merged["ground_truth_label"] != LABEL_NORMAL).astype(int).values
-        y_prob = merged["fraud_probability"].values
-        y_pred = (y_prob >= self.threshold).astype(int)
+        total = len(attempts)
+        successes = sum(1 for a in attempts if a.get("success", False))
+        blocked = sum(1 for a in attempts if a.get("blue_team_verdict") == "blocked")
+        escalated = sum(1 for a in attempts if a.get("blue_team_verdict") == "escalated")
+        allowed = sum(1 for a in attempts if a.get("blue_team_verdict") == "allowed")
 
-        # Standard binary metrics
-        prec = precision_score(y_true, y_pred, zero_division=0)
-        rec = recall_score(y_true, y_pred, zero_division=0)
-        f1 = f1_score(y_true, y_pred, zero_division=0)
-        
-        try:
-            roc_auc = roc_auc_score(y_true, y_prob)
-            pr_auc = average_precision_score(y_true, y_prob)
-        except Exception:
-            roc_auc = 0.5
-            pr_auc = float(np.mean(y_true))
+        # Per-category breakdown
+        categories = set(a.get("objective_category", "unknown") for a in attempts)
+        category_breakdown = {}
+        for cat in categories:
+            cat_attempts = [a for a in attempts if a.get("objective_category") == cat]
+            cat_total = len(cat_attempts)
+            cat_success = sum(1 for a in cat_attempts if a.get("success", False))
+            cat_blocked = sum(1 for a in cat_attempts if a.get("blue_team_verdict") == "blocked")
+            category_breakdown[cat] = {
+                "total": cat_total,
+                "successes": cat_success,
+                "blocked": cat_blocked,
+                "success_rate": round(cat_success / max(1, cat_total), 4),
+                "block_rate": round(cat_blocked / max(1, cat_total), 4),
+            }
 
-        cm = confusion_matrix(y_true, y_pred)
-        tn, fp, fn, tp = cm.ravel() if cm.shape == (2, 2) else (0, 0, 0, 0)
+        # Per-target breakdown
+        targets = set(a.get("target_name", "unknown") for a in attempts)
+        target_breakdown = {}
+        for tgt in targets:
+            tgt_attempts = [a for a in attempts if a.get("target_name") == tgt]
+            tgt_total = len(tgt_attempts)
+            tgt_success = sum(1 for a in tgt_attempts if a.get("success", False))
+            tgt_blocked = sum(1 for a in tgt_attempts if a.get("blue_team_verdict") == "blocked")
+            target_breakdown[tgt] = {
+                "total": tgt_total,
+                "successes": tgt_success,
+                "blocked": tgt_blocked,
+                "success_rate": round(tgt_success / max(1, tgt_total), 4),
+                "block_rate": round(tgt_blocked / max(1, tgt_total), 4),
+            }
 
-        # Per-threat breakdown
-        threat_breakdown = {}
-        for label, name in ATTACK_NAMES.items():
-            if label == LABEL_NORMAL:
-                continue
-            subset = merged[merged["ground_truth_label"] == label]
-            if not subset.empty:
-                n_total = len(subset)
-                n_caught = int((subset["fraud_probability"] >= self.threshold).sum())
-                threat_rec = n_caught / n_total
-                threat_breakdown[name] = {
-                    "total_attacks": n_total,
-                    "caught": n_caught,
-                    "bypassed": n_total - n_caught,
-                    "detection_rate": round(threat_rec, 4),
-                    "evasion_rate": round(1.0 - threat_rec, 4),
-                    "mean_fraud_score": round(float(subset["fraud_probability"].mean()), 4),
-                }
+        # Converter effectiveness
+        converter_counts = Counter()
+        converter_successes = Counter()
+        for a in attempts:
+            conv = a.get("converter_used", "none")
+            converter_counts[conv] += 1
+            if a.get("success", False):
+                converter_successes[conv] += 1
 
-        results = {
-            "summary": {
-                "total_transactions": len(merged),
-                "total_fraud": int(y_true.sum()),
-                "total_normal": int((1 - y_true).sum()),
-                "precision": round(prec, 4),
-                "recall": round(rec, 4),
-                "f1_score": round(f1, 4),
-                "roc_auc": round(roc_auc, 4),
-                "pr_auc": round(pr_auc, 4),
-            },
-            "confusion_matrix": {
-                "true_positives": int(tp),
-                "false_positives": int(fp),
-                "true_negatives": int(tn),
-                "false_negatives": int(fn),
-            },
-            "threat_breakdown": threat_breakdown,
+        converter_breakdown = {
+            conv: {
+                "total": converter_counts[conv],
+                "successes": converter_successes[conv],
+                "success_rate": round(converter_successes[conv] / max(1, converter_counts[conv]), 4),
+            }
+            for conv in converter_counts
         }
 
-        return results
+        return {
+            "total_attempts": total,
+            "successful_attacks": successes,
+            "blocked_attacks": blocked,
+            "escalated_attacks": escalated,
+            "allowed_attacks": allowed,
+            "success_rate": round(successes / max(1, total), 4),
+            "block_rate": round(blocked / max(1, total), 4),
+            "escalation_rate": round(escalated / max(1, total), 4),
+            "category_breakdown": category_breakdown,
+            "target_breakdown": target_breakdown,
+            "converter_breakdown": converter_breakdown,
+        }

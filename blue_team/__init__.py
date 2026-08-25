@@ -1,16 +1,4 @@
 """
-Blue Team - Adversarial AI Defense Lab
-Real-Time Fraud Detection, Rule Engine, Machine Learning, and Active Retraining.
+Blue Team — AI Defense Layer for AEGIS-AI.
+Guard rules, LLM judge, defense wrapper, feedback loop, and evaluator.
 """
-
-from blue_team.config import BlueTeamConfig
-from blue_team.pipeline import BlueTeamPipeline
-from blue_team.rule_engine import RuleEngine
-from blue_team.evaluator import BlueTeamEvaluator
-
-__all__ = [
-    "BlueTeamConfig",
-    "BlueTeamPipeline",
-    "RuleEngine",
-    "BlueTeamEvaluator",
-]

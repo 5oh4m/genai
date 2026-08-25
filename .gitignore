@@ -9,15 +9,37 @@ __pycache__/
 *$py.class
 .pytest_cache/
 
-# Generated dataset CSVs and heavy outputs
-data/*.csv
+# Environment variables (secrets)
+.env
+
+# Node / Next.js
+node_modules/
+.next/
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# Database
+*.db
+*.sqlite3
+
+# Docker volumes
+pgdata/
+
+# Generated data
 data/
 
-# Model binaries & checkpoints
+# Model binaries (legacy)
 models/**/*.joblib
 models/*.joblib
+
+# PyRIT local data
+.pyrit/
 
 # OS & Editor files
 .DS_Store
 .vscode/
 .idea/
+
+# Migration plan copy
+AEGIS-AI_Migration_Plan_1.md

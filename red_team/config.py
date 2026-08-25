@@ -1,95 +1,68 @@
 """
-Configuration, Data Contracts, and Constants for Red Team Generator.
+Configuration for the Red Team attack engine.
+Replaces the old tabular RedTeamConfig with agentic attack configuration.
 """
 
-from typing import List, Dict, Any
+from typing import Literal, Optional
 from dataclasses import dataclass, field
 
-# ---------------------------------------------------------
-# Data Contract Definitions
-# ---------------------------------------------------------
+# Target service identifiers
+TARGET_SUPPORT_CHATBOT = "support_chatbot"
+TARGET_INVOICE_AGENT = "invoice_agent"
+TARGET_MERCHANT_ONBOARDING = "merchant_onboarding"
 
-PUBLIC_COLUMNS: List[str] = [
-    "transaction_id",
-    "timestamp",
-    "sender_id",
-    "receiver_id",
-    "amount",
-    "channel",
-    "sender_account_age_days",
-    "receiver_account_age_days",
-    "device_type",
-    "session_duration_sec",
-    "time_since_payee_added_sec",
-    "concurrent_call_active",
-    "ip_country",
-    "ip_change_flag",
-    "login_to_transaction_gap_sec",
-    "velocity_1h",
-    "velocity_24h",
-    "amount_deviation_score",
-    "new_payee_flag",
+ALL_TARGETS = [TARGET_SUPPORT_CHATBOT, TARGET_INVOICE_AGENT, TARGET_MERCHANT_ONBOARDING]
+
+# Objective categories (map to old fraud themes)
+OBJECTIVE_IMPERSONATION = "impersonation"           # successor to voice_clone_app
+OBJECTIVE_INJECTED_INSTRUCTION = "injected_instruction"  # successor to ephemeral_merchant
+OBJECTIVE_COERCION = "coercion"                     # successor to digital_arrest
+
+ALL_OBJECTIVES = [OBJECTIVE_IMPERSONATION, OBJECTIVE_INJECTED_INSTRUCTION, OBJECTIVE_COERCION]
+
+# Attack strategies
+STRATEGY_SINGLE_TURN = "single_turn"
+STRATEGY_MULTI_TURN = "multi_turn_escalation"
+STRATEGY_CRESCENDO = "crescendo"
+
+ALL_STRATEGIES = [STRATEGY_SINGLE_TURN, STRATEGY_MULTI_TURN, STRATEGY_CRESCENDO]
+
+# Converter names
+CONVERTER_NONE = "none"
+CONVERTER_BASE64 = "base64"
+CONVERTER_ROLEPLAY = "roleplay"
+CONVERTER_PARAPHRASE = "paraphrase"
+CONVERTER_UNICODE = "unicode_substitution"
+CONVERTER_TRANSLATION = "translation"
+
+ALL_CONVERTERS = [
+    CONVERTER_NONE,
+    CONVERTER_BASE64,
+    CONVERTER_ROLEPLAY,
+    CONVERTER_PARAPHRASE,
+    CONVERTER_UNICODE,
+    CONVERTER_TRANSLATION,
 ]
 
-ANSWER_KEY_COLUMNS: List[str] = [
-    "transaction_id",
-    "ground_truth_label",
-    "attack_subtype",
-    "stealth_level",
-    "evasion_technique",
-    "evasion_parameters",
-]
-
-# ---------------------------------------------------------
-# Attack Constants
-# ---------------------------------------------------------
-
-LABEL_NORMAL: int = 0
-LABEL_VOICE_CLONE: int = 1
-LABEL_EPHEMERAL_MERCHANT: int = 2
-LABEL_DIGITAL_ARREST: int = 3
-
-ATTACK_NAMES: Dict[int, str] = {
-    LABEL_NORMAL: "normal",
-    LABEL_VOICE_CLONE: "voice_clone_app",
-    LABEL_EPHEMERAL_MERCHANT: "ephemeral_merchant",
-    LABEL_DIGITAL_ARREST: "digital_arrest",
-}
-
-# ---------------------------------------------------------
-# Categorical Distributions & Weights
-# ---------------------------------------------------------
-
-CHANNELS = ["UPI", "Card", "Wire", "P2P"]
-CHANNEL_WEIGHTS_BASELINE = [0.50, 0.30, 0.05, 0.15]
-
-DEVICE_TYPES = ["iOS", "Android", "Web", "Unknown"]
-DEVICE_WEIGHTS_BASELINE = [0.45, 0.45, 0.08, 0.02]
-
-COUNTRIES = ["US", "GB", "IN", "CA", "DE", "SG", "AU"]
-DEFAULT_HOME_COUNTRY = "US"
-
-# ---------------------------------------------------------
-# Generator Default Configurations
-# ---------------------------------------------------------
 
 @dataclass
-class RedTeamConfig:
-    """Master configuration for the Red Team synthetic generator."""
+class AttackConfig:
+    """Configuration for a single attack run."""
+    target: str = TARGET_SUPPORT_CHATBOT
+    objective: str = OBJECTIVE_IMPERSONATION
+    strategy: str = STRATEGY_SINGLE_TURN
+    max_turns: int = 10
+    converters: list[str] = field(default_factory=lambda: [CONVERTER_NONE])
     seed: int = 42
-    start_date: str = "2026-08-01 00:00:00"
-    simulation_days: int = 14
-    num_users: int = 500
-    num_merchants: int = 100
-    total_transactions: int = 10000
-    fraud_ratio: float = 0.05
-    
-    # Threat distribution among fraud cases (proportions sum to 1.0)
-    threat_weights: Dict[str, float] = field(default_factory=lambda: {
-        "voice_clone_app": 0.40,
-        "ephemeral_merchant": 0.35,
-        "digital_arrest": 0.25,
-    })
-    
-    # Global stealth level (0.0 = naive/noisy, 1.0 = highly evasive)
-    stealth_level: float = 0.0
+
+
+@dataclass
+class BatchAttackConfig:
+    """Configuration for a batch of attack runs."""
+    num_attempts: int = 10
+    targets: list[str] = field(default_factory=lambda: [TARGET_SUPPORT_CHATBOT])
+    objectives: list[str] = field(default_factory=lambda: ALL_OBJECTIVES)
+    strategies: list[str] = field(default_factory=lambda: [STRATEGY_SINGLE_TURN, STRATEGY_MULTI_TURN])
+    converters: list[str] = field(default_factory=lambda: [CONVERTER_NONE, CONVERTER_ROLEPLAY])
+    max_turns: int = 10
+    seed: int = 42

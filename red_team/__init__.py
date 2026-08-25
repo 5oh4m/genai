@@ -1,6 +1,3 @@
 """
-Red Team - Adversarial AI Defense Lab
-Synthetic Transaction Data Factory & Adversarial Attack Generator
+Red Team — AI Attack Engine built on PyRIT + Gemini.
 """
-
-__version__ = "1.0.0"
